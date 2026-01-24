@@ -1,0 +1,303 @@
+---
+title: "Monte Carlo Simulations for Hypothesis Testing"
+author: "Ananya Iyer"
+date: "2025-02-18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Problem 1**
+### **Null Hypothesis: The SEC flagging rate for Iron Bank trades is 2.4%, the same as other traders.**
+### **Test Statistic: Number of flagged trades in 2021 trades, simulated under the null hypothesis.**
+### **Simulation: Simulate 100,000 samples of 2021 trades where each trade has a 2.4% probability of being flagged.**
+```{r, echo=FALSE, message=FALSE}
+set.seed(42)  # For reproducibility
+
+# Given values
+n_trades <- 2021  # Total trades
+p_flagged <- 0.024  # Baseline flagging probability
+observed_flags <- 70  # Observed flagged trades
+
+# Monte Carlo simulation
+simulated_flags <- rbinom(100000, n_trades, p_flagged)
+
+# p-value (proportion of simulations ≥ observed count)
+p_value <- mean(simulated_flags >= observed_flags)
+
+# Plot distribution
+hist(simulated_flags, breaks = 50, col = "lightblue", main = "Distribution of Flagged Trades",
+     xlab = "Flagged Trades", ylab = "Frequency")
+abline(v = observed_flags, col = "red", lwd = 2)
+
+# Output results
+cat("P-value:", p_value, "\n")
+```
+### **Interpretation: If the true flagging rate were 2.4%, seeing 70 flagged trades in a sample of 2021 is highly unlikely. The null hypothesis that Iron Bank's flagging rate is the same as the SEC's baseline does not look plausible. The low p-value suggests that Iron Bank's trades are flagged at a significantly higher rate than expected.**
+
+
+# **Problem 2**
+### **Null Hypothesis: Gourmet Bites has the same health violation rate as the city average (3%).**
+### **Test Statistic: The observed number of health code violations at Gourmet Bites compared to what we would expect under the null hypothesis.**
+### **Simulation: A Monte Carlo simulation was run at least 100,000 times, randomly generating outcomes under the null hypothesis to estimate the probability of observing 8 or more violations purely by chance.**
+```{r, echo=FALSE, message=FALSE}
+set.seed(42)  
+
+# Given values
+n_inspections <- 50  
+p_violation <- 0.03  
+observed_violations <- 8  
+
+# Monte Carlo simulation
+simulated_violations <- rbinom(100000, n_inspections, p_violation)
+
+# p-value
+p_value <- mean(simulated_violations >= observed_violations)
+
+# Plot distribution
+hist(simulated_violations, breaks = 20, col = "lightblue", main = "Distribution of Health Violations",
+     xlab = "Number of Violations", ylab = "Frequency")
+abline(v = observed_violations, col = "red", lwd = 2)
+
+cat("P-value:", p_value, "\n")
+
+```
+### **Interpretation: The resulting p-value is extremely small. This suggests that the likelihood of seeing such a high violation rate by random chance (if the null hypothesis were true) is very low. Given the very low p-value, we have strong evidence to reject the null hypothesis. This means it is highly unlikely that Gourmet Bites' health violations are simply due to random variation. Instead, the data suggests that this restaurant chain has a significantly higher violation rate than the city's average.**
+
+# **Problem 3**
+### **Null Hypothesis: The distribution of jurors empaneled by this judge matches the county’s population proportions. That is, the selection process is fair and reflects the overall eligible jury pool.**
+### **Test Statistic: The test statistic obtained from the chi-squared test is 12.426 with 4 degrees of freedom.**
+
+```{r, echo=FALSE, message=FALSE}
+# Load required libraries
+library(knitr)
+library(kableExtra)
+
+# jury data
+observed_jurors <- c(85, 56, 59, 27, 13)  
+expected_proportions <- c(0.30, 0.25, 0.20, 0.15, 0.10)  
+total_jurors <- sum(observed_jurors)
+
+# expected counts
+expected_jurors <- expected_proportions * total_jurors
+
+# Chi-squared test
+chisq_test <- chisq.test(observed_jurors, p = expected_proportions)
+
+# test results
+results_df <- data.frame(
+  Statistic = c("Chi-squared", "Degrees of Freedom", "P-value"),
+  Value = c(chisq_test$statistic, chisq_test$parameter, chisq_test$p.value)
+)
+
+# table
+kable(results_df, col.names = c("Statistic", "Value"), format = "latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("hold_position", "striped"), full_width = FALSE, position = "center")
+
+```
+### **Interpretation: Since p=0.01445<0.05, we reject the null hypothesis at the 5% significance level. This suggests that the observed jury distribution is significantly different from the expected proportions. The results indicate that the jury selection process overseen by this judge is statistically different from what we would expect under a fair selection process. This could be due to systematic bias but to confirm bias, one could analyze jury selection under different judges or investigate if specific groups are disproportionately removed.**
+
+# **Problem 4** 
+### **Null hypothesis: The given sentence follows the normal letter frequency distribution of English.**
+```{r, echo=FALSE, message=FALSE}
+# library(dplyr)
+# library(parallel) 
+
+# Read the Brown Corpus sentences
+#brown_sentences <- readLines("brown_sentences.txt", warn = FALSE)
+
+# Read the letter frequency distribution
+#letter_freqs <- read.csv("letter_frequencies.csv", stringsAsFactors = FALSE)
+
+# correct formatting
+#if (!all(c("Letter", "Probability") %in% colnames(letter_freqs))) {
+#  stop("Error: CSV file does not contain expected columns 'Letter' and 'Frequency'.")
+#}
+
+# Convert to vector  
+#letter_freqs <- setNames(letter_freqs$Probability, letter_freqs$Letter)
+
+# convert to uppercase, remove non-letters, count letters
+#preprocess_text <- function(text) {
+#  text <- gsub("[^A-Za-z]", "", text)  # Remove non-letter characters
+#  text <- toupper(text)  # Convert to uppercase
+#  table(factor(strsplit(text, "")[[1]], levels = names(letter_freqs)))  # Count occurrences
+#}
+
+# compute chi-squared statistic using Monte Carlo simulation
+#compute_chi_squared <- function(sentence, expected_freqs, B = 100) {
+#  observed_counts <- preprocess_text(sentence)
+#  total_letters <- sum(observed_counts)
+  
+#  # Skip sentences that are too short
+#  if (total_letters < 10) return(NA)
+  
+#  # expected counts
+#  expected_counts <- expected_freqs * total_letters
+  
+#  # no zero or very low expected counts
+#  valid_indices <- expected_counts > 5
+#  if (sum(valid_indices) < 5) return(NA)  # Must have enough valid categories
+
+#  # Run chi-squared test with Monte Carlo simulation
+#  test_result <- chisq.test(as.numeric(observed_counts[valid_indices]), 
+#                            p = expected_counts[valid_indices], 
+#                            rescale.p = TRUE, 
+#                            simulate.p.value = TRUE, 
+#                            B = B)
+  
+#  return(test_result$statistic)
+#}
+
+#num_cores <- detectCores() - 1   
+#chi_sq_values <- mclapply(brown_sentences, compute_chi_squared, expected_freqs = letter_freqs, mc.cores = num_cores)
+#chi_sq_values <- na.omit(unlist(chi_sq_values))  # Remove NAs
+
+# Given test sentences to check for watermark
+#test_sentences <- c(
+#  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+#  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+#  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+#  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+#  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+#  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+#  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+#  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+#  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+#  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+#)
+
+# chi-squared statistics for test sentences
+#test_chi_sq <- sapply(test_sentences, compute_chi_squared, expected_freqs = letter_freqs)
+
+# p-values  
+#p_values <- sapply(test_chi_sq, function(x) mean(chi_sq_values >= x, na.rm = TRUE))
+
+#library(knitr)
+#library(kableExtra)
+
+#results <- data.frame(
+#  Sentence = paste("Sentence", 1:10),
+#  Chi_Sq = test_chi_sq,
+#  P_Value = round(p_values, 3)
+#)
+
+# Clean the results
+#results_clean <- results[, c("Sentence", "Chi_Sq", "P_Value")]
+
+# table
+#kable(results_clean, col.names = c("Sentence", "Chi-Sq", "P-Value"), digits = 3, format = "latex", booktabs = TRUE) %>%
+#  kable_styling(latex_options = c("hold_position", "striped"), full_width = FALSE, position = "center") %>%
+#  column_spec(1, width = "6cm") %>%  # Adjust width for Sentence column
+#  column_spec(2, width = "2cm") %>%  # Adjust width for Chi-Sq column
+#  column_spec(3, width = "2cm") %>%  # Adjust width for P-Value column
+#  row_spec(0, bold = TRUE, color = "black", background = "gray!30")  # Header styling
+
+# Identify the most watermarked sentence
+#watermarked_sentence_index <- which.min(results$P_Value)
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+brown_sentences <- readLines("brown_sentences.txt")
+
+# Function to process a sentence and count letter occurrences
+process_letters <- function(sentence) {
+  # Remove non-alphabetic characters and convert to uppercase
+  cleaned_sentence <- gsub("[^A-Za-z]", "", sentence)
+  cleaned_sentence <- toupper(cleaned_sentence)
+  
+  # Initialize letter frequency count
+  letter_frequencies <- setNames(rep(0, 26), LETTERS)
+  
+  # Count occurrences of each letter
+  for (char in strsplit(cleaned_sentence, "")[[1]]) {
+    letter_frequencies[char] <- letter_frequencies[char] + 1
+  }
+  return(letter_frequencies)
+}
+
+# Apply letter frequency counting to all sentences
+observed_letter_counts <- sapply(brown_sentences, process_letters, simplify = FALSE)
+
+# Load letter frequency probabilities from CSV
+letter_probabilities <- read.csv("letter_frequencies.csv")
+letter_probabilities <- setNames(letter_probabilities$Probability, letter_probabilities$Letter)
+
+# Function to calculate expected letter counts based on sentence length
+compute_expected_counts <- function(sentence_length, letter_probabilities) {
+  expected_counts <- setNames(rep(0, 26), LETTERS)
+  expected_counts[names(letter_probabilities)] <- sentence_length * letter_probabilities
+  return(expected_counts)
+}
+
+# Function to compute chi-squared statistic
+compute_chi_squared <- function(observed_counts, expected_counts) {
+  sum((observed_counts - expected_counts)^2 / expected_counts)
+}
+
+# Compute chi-squared values for each sentence
+chi_squared_values <- sapply(observed_letter_counts, function(observed_counts) {
+  sentence_length <- sum(observed_counts)  
+  expected_counts <- compute_expected_counts(sentence_length, letter_probabilities)
+  
+  # Ensure consistency in data structure
+  observed_counts <- observed_counts[names(expected_counts)]
+  
+  compute_chi_squared(observed_counts, expected_counts)
+})
+
+# Store chi-squared statistics in a data frame
+chi_squared_results <- data.frame(chi_squared = chi_squared_values)
+
+# Define test sentences for evaluation
+test_sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum's new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker's inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project's effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone's expectations."
+)
+
+# Compute chi-squared values for test sentences
+test_chi_squared_values <- sapply(test_sentences, function(sentence) {
+  observed_counts <- process_letters(sentence) 
+  sentence_length <- sum(observed_counts)
+  expected_counts <- compute_expected_counts(sentence_length, letter_probabilities)
+  observed_counts <- observed_counts[names(expected_counts)]  
+  compute_chi_squared(observed_counts, expected_counts)  
+})
+
+# Compute p-values
+p_values <- sapply(test_chi_squared_values, function(stat) {
+  mean(chi_squared_values >= stat)
+})
+
+
+p_value_table <- data.frame(Sentence = 1:10, P_Value = round(p_values, 3))
+
+
+library(knitr)
+library(kableExtra)
+
+
+kable(p_value_table, col.names = c("Sentence", "Chi-Sq", "P-Value"), digits = 3, format = "latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("hold_position", "striped"), full_width = FALSE, position = "center") %>%
+  column_spec(1, width = "6cm") %>%  # Adjust width for Sentence column
+  column_spec(2, width = "2cm") %>%  # Adjust width for Chi-Sq column
+  column_spec(3, width = "2cm") %>%  # Adjust width for P-Value column
+  row_spec(0, bold = TRUE, color = "black", background = "gray!30")  # Header styling
+
+
+
+
+```
+
+### **Sentence 6 is the most likely watermarked sentence because it has the lowest p-value among the given sentences. The low p-value means that the letter distribution in the sentence is significantly different from naturally occurring English sentences, likely due to watermarking.**

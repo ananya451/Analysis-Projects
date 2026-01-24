@@ -1,0 +1,509 @@
+---
+title: "Regression and Visualization"
+author: "Ananya Iyer"
+date: "2025-04-17"
+output: 
+  pdf_document:
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 8, fig.height = 5,fig.align = 'center', fig.pos = 'H')
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(broom)
+```
+
+# **Problem 1: Manufacturing Flaws in Circuit Boards**
+
+```{r load-data, echo=FALSE,message=FALSE}
+# Load data
+solder_data <- read.csv("solder.csv")
+
+# Convert variables to appropriate types
+solder_data$Opening <- factor(solder_data$Opening, levels = c("S", "M", "L"), 
+                              labels = c("Small", "Medium", "Large"))
+solder_data$Solder <- factor(solder_data$Solder)
+```
+
+### **Part A: Visualizing the Relationship Between Variables and Skips**
+
+```{r plot-opening, fig.cap="Relationship between opening size and number of solder skips. Smaller openings are associated with higher numbers of skips, with the Small opening size showing the highest median number of skips. Large openings tend to have the lowest number of skips.", echo=FALSE,message=FALSE}
+# Plot for Opening size vs. skips
+ggplot(solder_data, aes(x = Opening, y = skips, fill = Opening)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(x = "Opening Size", y = "Number of Skips", 
+       title = "Effect of Opening Size on Solder Skips") +
+  scale_fill_brewer(palette = "Blues") +
+  theme(legend.position = "none")
+```
+
+```{r, echo=FALSE,message=FALSE}
+cat("\n\n")
+```
+
+```{r plot-solder, fig.cap="Relationship between solder thickness and number of solder skips. Thin solder is associated with substantially more skips compared to thick solder, indicating that solder thickness is an important factor in manufacturing quality.", echo=FALSE,message=FALSE}
+# Plot for Solder thickness vs. skips
+ggplot(solder_data, aes(x = Solder, y = skips, fill = Solder)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(x = "Solder Thickness", y = "Number of Skips", 
+       title = "Effect of Solder Thickness on Skips") +
+  scale_fill_brewer(palette = "Greens") +
+  theme(legend.position = "none")
+```
+
+
+### **Part B: Regression Model with Interaction**
+```{r regression-model, echo=FALSE,message=FALSE}
+# Build regression model with interaction
+model <- lm(skips ~ Opening * Solder, data = solder_data)
+
+# Get model summary
+model_summary <- summary(model)
+
+# Create a table with estimates and confidence intervals
+model_tidy <- tidy(model, conf.int = TRUE)
+
+# Create nicely formatted table for PDF
+kable(model_tidy[, c("term", "estimate", "conf.low", "conf.high")],
+      col.names = c("Term", "Estimate", "95% CI Lower", "95% CI Upper"),
+      caption = "Regression Coefficients with 95% Confidence Intervals")
+```
+
+### **Part C: Interpretation of Model Coefficients**
+
+**Intercept**: This represents the average number of skips when the opening size is Small and solder is Thick.
+
+**OpeningMedium**: Medium openings reduce the number of skips compared to Small openings when using Thick solder.
+
+**OpeningLarge**: Large openings reduce the number of skips compared to Small openings when using Thick solder, and show the greatest reduction.
+
+**SolderThin**: When using a Small opening, switching from Thick to Thin solder increases the number of skips, indicating Thin solder generally produces more defects.
+
+**OpeningMedium:SolderThin**: The effect of using Thin solder (vs. Thick) is larger with Medium openings than with Small openings, suggesting the disadvantage of Thin solder is slightly magnified with Medium openings.
+
+**OpeningLarge:SolderThin**: The effect of using Thin solder (vs. Thick) is larger with Large openings than with Small openings, indicating that Large openings with Thin solder don't perform as well as might be expected.
+
+### **Part D: Recommendation for AT&T**
+
+```{r predictions, echo=FALSE,message=FALSE}
+# Create a dataset with all combinations
+combinations <- expand.grid(
+  Opening = factor(c("Small", "Medium", "Large"), levels = c("Small", "Medium", "Large")),
+  Solder = factor(c("Thick", "Thin"))
+)
+
+# Predict mean skips for each combination
+predictions <- predict(model, newdata = combinations, se.fit = TRUE)
+combinations$predicted_skips <- predictions$fit
+combinations$se <- predictions$se.fit
+
+# Order by predicted skips
+combinations <- combinations[order(combinations$predicted_skips), ]
+```
+
+```{r recommendation-table, echo=FALSE,message=FALSE}
+# Create nice table for PDF
+kable(combinations[, c("Opening", "Solder", "predicted_skips")],
+      col.names = c("Opening Size", "Solder Thickness", "Predicted Skips"),
+      caption = "Predicted Number of Skips for Each Manufacturing Combination",
+      digits = 2) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), 
+                latex_options = c("hold_position")) %>%
+  row_spec(1, bold = TRUE, background = "#E6F0FF")
+```
+
+Based on the analysis, I would recommend using Large opening size with Thick solder for AT&T's manufacturing process. This combination is predicted to produce the lowest number of skips, and is much lower than any other combination. The large opening appears to allow for better solder flow, and thick solder consistently shows fewer defects across all opening sizes. The interaction terms suggest that the advantage of large openings is slightly reduced when using thin solder, further supporting the use of thick solder with large openings.
+
+```{r visualization-of-interaction, fig.cap="Interaction between opening size and solder thickness. The plot shows that Large openings with Thick solder produce the fewest skips, while Small openings with Thin solder produce the most. The lines not being parallel indicates the presence of interaction.", echo=FALSE,message=FALSE}
+# Create interaction plot for visualization
+ggplot(combinations, aes(x = Opening, y = predicted_skips, color = Solder, group = Solder)) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  theme_minimal() +
+  labs(x = "Opening Size", y = "Predicted Number of Skips", 
+       title = "Interaction Between Opening Size and Solder Thickness") +
+  scale_color_manual(values = c("darkblue", "darkred")) +
+  geom_text(aes(label = round(predicted_skips, 1)), 
+            vjust = -0.8, size = 3.5)
+```
+# **Problem 2: Grocery Store Prices**
+```{r load-grocery, echo=FALSE, message=FALSE}
+# Load libraries
+library(tidyverse)
+library(moderndive)
+
+# Read the data
+groceries <- read.csv("groceries.csv")
+
+```
+
+### **Part A: Store-level Average Prices**
+
+```{r store-avg-price, fig.cap="Average price of products by store. Some stores, like Whole Foods, appear to charge more on average. Others, like Walmart and Fiesta, charge less.", echo=FALSE, message=FALSE}
+# Calculate average price per store
+store_avg_prices <- groceries %>%
+  group_by(Store) %>%
+  summarize(avg_price = mean(Price, na.rm = TRUE)) %>%
+  arrange(avg_price)
+
+# Create bar graph with horizontal bars
+ggplot(store_avg_prices, aes(x = avg_price, y = reorder(Store, avg_price))) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Average Product Prices by Store",
+    x = "Average Price ($)",
+    y = "Store",
+    caption = "Average prices across stores show substantial variation, with Fiesta having the lowest prices and Whole Foods having the highest."
+  ) +
+  theme_minimal()
+
+```
+
+### **Part B: Product Availability Across Stores**
+
+```{r product-availability, fig.cap="Number of stores selling each product. Staples like eggs and milk are available in all stores, while niche products are less common.", echo=FALSE, message=FALSE}
+# Count number of stores selling each product
+product_availability <- groceries %>%
+  group_by(Product) %>%
+  summarize(num_stores = n()) %>%
+  arrange(desc(num_stores))
+
+# Create bar graph
+ggplot(product_availability, aes(x = num_stores, y = reorder(Product, num_stores))) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  labs(
+    title = "Number of Stores Selling Each Product",
+    x = "Number of Stores",
+    y = "Product"
+  ) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 7))
+```
+
+### **Part C: Price vs. Type of Store (Controlling for Product)**
+
+```{r model-type, echo=FALSE, message=FALSE}
+# Set reference level
+groceries$Type <- relevel(factor(groceries$Type), ref = "Grocery")
+
+# Fit model
+model_c <- lm(Price ~ Product + Type, data = groceries)
+
+# Get the CI for the Convenience store effect
+ci <- confint(model_c)[grep("TypeConvenience ", rownames(confint(model_c))), ]
+
+```
+
+Compared with grocery stores, convenience stores charge between 
+`r round(ci[1], 2)` and `r round(ci[2], 2)` dollars more for the same product.
+
+
+### **Part D: Store-level price differences**
+
+```{r, echo=FALSE, message=FALSE}
+# Fit model for Price vs Product and Store
+model_store <- lm(Price ~ Product + Store, data = groceries)
+model_store_summary <- get_regression_table(model_store)
+
+# Extract store coefficients and sort
+store_effects <- model_store_summary %>%
+  filter(grepl("Store", term)) %>%
+  mutate(term = gsub("Store", "", term)) %>%
+  arrange(estimate)
+
+# Show the two lowest and highest priced stores
+lowest_two <- head(store_effects, 2)
+highest_two <- tail(store_effects, 2)
+
+lowest_two
+highest_two
+```
+When comparing the same product across stores, the two stores that seem to charge the lowest prices are Walmart and Kroger Fresh Fare. The two stores that seem to charge the highest prices are Whole Foods and Wheatsville Food Co-op.
+
+### **Part E: Comparing Central Market and HEB**
+```{r, echo=FALSE, message=FALSE}
+# Extract the coefficient for Central Market
+central_market_coef <- model_store_summary %>%
+  filter(term == "Store: Central Market")
+
+# Display the coefficient and its significance
+central_market_coef
+```
+
+Based on the coefficient for Central Market in our model, it appears that Central Market charges about 0.57 more than the reference category (which includes HEB) for the same product, and this difference is statistically significant with a p-value < 0.05 and a 95% confidence interval that does not include zero. This suggests that Central Market does indeed charge more than HEB for the same products, supporting the possibility of price discrimination.
+However, when we put this into context with other store differences, we find that this price premium is relatively small compared to the much larger price differences seen between discount retailers like Walmart and premium retailers like Wheatsville Co-Op. 
+
+### **Part F: Relationship between area income and prices**
+```{r, echo=FALSE, message=FALSE}
+# Create Income10K variable
+groceries <- groceries %>%
+  mutate(Income10K = Income / 10000)
+
+# Calculate standard deviations for standardized coefficient
+sd_income10k <- sd(groceries$Income10K)
+sd_price <- sd(groceries$Price)
+
+# Fit model for Price vs Product and Income10K
+model_income <- lm(Price ~ Product + Income10K, data = groceries)
+income_summary <- get_regression_table(model_income)
+
+# Extract Income10K coefficient
+income_coef <- income_summary %>%
+  filter(term == "Income10K")
+
+# Calculate standardized coefficient
+std_coef <- income_coef$estimate * (sd_income10k / sd_price)
+
+# Display the results
+income_coef
+cat("Standardized coefficient:", round(std_coef, 3))
+```
+Based on the sign of the Income10K coefficient (which is negative), consumers in higher-income ZIP codes tend to pay slightly less for the same product on average. This finding aligns with the food desert hypothesis, which suggests that lower-income areas may face higher grocery prices.
+
+However, the effect is not statistically significant (p = 0.144), and the confidence interval includes zero, indicating uncertainty about whether this relationship is meaningful in the population.
+
+Regarding the effect size, the standardized coefficient is -0.031, meaning that a one-standard-deviation increase in income is associated with a 0.031 standard-deviation decrease in price.
+
+In conclusion, this analysis reveals several insights about grocery pricing:
+1. Store type matters: convenience stores charge a premium.
+2. Walmart and Kroger Fresh Fare offer the lowest prices, while Whole Foods and Wheatsville Co-op charge the most.
+3. Central Market charges more than HEB, but the difference is under $1.
+4. Lower-income ZIP codes may face slightly higher prices, though this trend is small and not statistically significant.
+
+# **Problem 3: Redlining**
+```{r, echo=FALSE, message=FALSE}
+redlining <- read.csv("redlining.csv")
+```
+
+## Part A: ZIP codes with a higher percentage of minority residents tend to have more FAIR policies per 100 housing units.
+
+```{r, echo=FALSE, message=FALSE}
+# Let's reproduce Figure A1
+figure_A1 <- ggplot(redlining, aes(x = minority, y = policies)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Figure A1: FAIR policies vs. % Minority Residents",
+    x = "% Minority",
+    y = "FAIR Policies per 100 Housing Units"
+  ) +
+  theme_minimal()
+
+# Run the regression model
+model_A <- lm(policies ~ minority, data = redlining)
+summary_A <- summary(model_A)
+r_squared_A <- summary_A$r.squared
+regression_table_A <- get_regression_table(model_A)
+```
+
+```{r, echo=FALSE, message=FALSE}
+figure_A1
+#cat("Model A Results:")
+#cat("R-squared:", r_squared_A)
+#print(kable(regression_table_A, format = "markdown", caption = "Regression of FAIR Policies on Minority Percentage"))
+```
+##### Model A Results:
+
+##### R-squared: `r round(r_squared_A, 3)`
+\
+```{r, echo=FALSE, message=FALSE}
+regression_table_A %>%
+  kable(
+    caption = "Regression of FAIR Policies on Minority Percentage",
+    digits = 3,
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+###### TRUE. According to Figure A1, there is a positive relationship between minority percentage and FAIR policies. The regression coefficient for minority is 0.014 (p < 0.001), indicating that for each percentage point increase in minority residents, the number of FAIR policies per 100 housing units increases by 0.014. This relationship is statistically significant and the R² of 0.516 indicates a moderately strong association.
+
+## Part B: The evidence suggests an interaction effect between minority percentage and the age of the housing stock in the way that these two variables are related to the number of FAIR policies in a ZIP code.
+
+```{r, echo=FALSE, message=FALSE}
+# Reproduce Figure B1
+figure_B1 <- ggplot(redlining, aes(x = age, y = minority)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Figure B1: % Minority vs. % Housing Built Before WWII",
+    x = "% Housing Built Before WWII",
+    y = "% Minority"
+  ) +
+  theme_minimal()
+
+# Run the regression model  
+model_B <- lm(minority ~ age, data = redlining)
+summary_B <- summary(model_B)
+r_squared_B <- summary_B$r.squared
+regression_table_B <- get_regression_table(model_B)
+
+# Create a new model to test the interaction effect
+model_B_interaction <- lm(policies ~ minority * age, data = redlining)
+summary_B_interaction <- summary(model_B_interaction)
+regression_table_B_interaction <- get_regression_table(model_B_interaction)
+```
+
+```{r, echo=FALSE, message=FALSE}
+figure_B1
+#cat("**Model B Results:**\n\n")
+#cat("R-squared:", r_squared_B, "\n\n")
+#print(kable(regression_table_B, format = "markdown", caption = "Regression of Minority Percentage on Housing Age"))
+```
+
+##### Model B Results:
+
+##### R-squared: `r round(r_squared_B, 3)`
+\
+```{r, echo=FALSE, message=FALSE}
+regression_table_B %>%
+  kable(
+    caption = "Regression of Minority Percentage on Housing Age",
+    digits = 3,
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+
+###### UNDECIDABLE/AMBIGUOUS. The provided evidence in Figure B1 and model_B only shows the relationship between minority percentage and housing age, not how they jointly affect FAIR policies. Although the model shows a weak positive relationship between housing age and minority percentage and R² ≈ 0.06, but this is not statistically significant with p=0.125 and to properly evaluate this statement, we would need a model that tests the interaction between minority percentage and housing age in predicting FAIR policies.
+
+
+### Part C: The relationship between minority percentage and number of FAIR policies per 100 housing units is stronger in high-fire-risk ZIP codes than in low-fire-risk ZIP codes.
+
+```{r, echo=FALSE, message=FALSE}
+# Create fire risk groups
+redlining <- redlining %>%
+  mutate(fire_risk = ifelse(fire > median(fire), "High", "Low"))
+
+# Reproduce Figure C1
+figure_C1 <- ggplot(redlining, aes(x = minority, y = policies, color = fire_risk)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Figure C1: Minority % and FAIR Policies by Fire Risk Level",
+    x = "% Minority",
+    y = "FAIR Policies per 100 Housing Units",
+    color = "Fire Risk Group"
+  ) +
+  theme_minimal()
+
+# Run the regression model  
+model_C <- lm(policies ~ minority + fire_risk + minority:fire_risk, data = redlining)
+summary_C <- summary(model_C)
+r_squared_C <- summary_C$r.squared
+regression_table_C <- get_regression_table(model_C)
+```
+
+```{r, echo=FALSE, message=FALSE}
+figure_C1
+```
+
+##### Model C Results:
+
+##### R-squared: `r round(r_squared_C, 3)`
+\
+```{r, echo=FALSE, message=FALSE}
+#print(kable(regression_table_C, format = "markdown", caption = "Regression with Interaction between Minority Percentage and Fire Risk"))
+regression_table_C %>%
+  kable(
+    caption = "Regression with Interaction between Minority Percentage and Fire Risk",
+    digits = 3,
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+###### FALSE. Figure C1 shows similar slopes for the relationship between minority percentage and FAIR policies in both high and low fire risk areas. The interaction term in model_C has a very small coefficient and is not statistically significant (p = 0.839). This suggests that the relationship between minority percentage and FAIR policies does not significantly differ between high and low fire risk ZIP codes. To make this statement true, we would need stronger statistical evidence that the effect of minority percentage on FAIR policies truly differs between fire risk groups. Specifically, the interaction term in Model_C would need to be statistically significant and negative, supporting a weaker relationship in low fire risk ZIPs compared to high fire risk ZIPs.  
+
+### Part D: Even without controlling for any other variables, income 'explains away' all the association between minority percentage and FAIR policy uptake.
+
+```{r, echo=FALSE, message=FALSE}
+# Run the two models 
+model_D1 <- lm(policies ~ minority, data = redlining)
+summary_D1 <- summary(model_D1)
+regression_table_D1 <- get_regression_table(model_D1)
+
+model_D2 <- lm(policies ~ minority + income, data = redlining)
+summary_D2 <- summary(model_D2)
+regression_table_D2 <- get_regression_table(model_D2)
+```
+
+
+##### Model D1 Results (without income):
+
+\
+
+```{r, echo=FALSE, message=FALSE}
+regression_table_D1 %>%
+  kable(
+    caption = "Regression of FAIR Policies on Minority Percentage",
+    digits = 3,
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+\
+
+##### Model D2 Results (with income):
+
+\
+
+```{r, echo=FALSE, message=FALSE}
+regression_table_D2 %>%
+  kable(
+    caption = "Regression of FAIR Policies on Minority Percentage and Income",
+    digits = 3,
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+###### FALSE. When comparing model_D1 (policies ~ minority) and model_D2 (policies ~ minority + income), we see that while controlling for income does reduce the coefficient for minority from 0.014 to 0.01, the minority coefficient remains statistically significant (p = 0.002) in model_D2. This indicates that income explains some but not all of the association between minority percentage and FAIR policy uptake. In addition, income does not “explain away” the association between minority percentage and FAIR policies. In Model_D2, the minority coefficient remains positive and statistically significant (p = 0.002) even after controlling for income, indicating that minority percentage still independently predicts FAIR policy usage. To make Statement D true, the correction needed would be for the minority coefficient to become statistically insignificant after adding income to the model. 
+
+### Part E: Minority percentage and number of FAIR policies are still associated at the ZIP code level, even after controlling for income, fire risk, and housing age.
+```{r, echo=FALSE, message=FALSE}
+# Run the multiple regression model 
+model_E <- lm(policies ~ minority + income + fire + age, data = redlining)
+summary_E <- summary(model_E)
+r_squared_E <- summary_E$r.squared
+regression_table_E <- get_regression_table(model_E)
+```
+
+##### Model E Results:
+
+##### R-squared: `r round(r_squared_E, 3)`
+\
+```{r, echo=FALSE, message=FALSE}
+regression_table_E %>%
+  kable(
+    caption = "Multiple Regression with All Control Variables",
+    digits = 3,
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+###### TRUE. In model_E, which controls for income, fire risk, and housing age, the coefficient for minority remains positive (0.008) and statistically significant (p = 0.006). This indicates that even after accounting for these other factors, there is still a significant association between minority percentage and FAIR policies at the ZIP code level.
+
+
+## Summary 
+#### Based on the analysis of the redlining data from 40 ZIP codes in Chicago:
+##### 1. There is a significant positive relationship between minority percentage and FAIR policies per 100 housing units.
+##### 2. We cannot determine if there is an interaction effect between minority percentage and housing age due to insufficient evidence.
+##### 3. The relationship between minority percentage and FAIR policies does not significantly differ between high and low fire risk areas.
+##### 4. Income explains some but not all of the association between minority percentage and FAIR policy uptake.
+##### 5. Even after controlling for income, fire risk, and housing age, minority percentage remains significantly associated with FAIR policies.
+##### These findings suggest potential evidence of redlining practices, as ZIP codes with higher minority percentages tend to have more FAIR policies (indicating less access to private insurance), even after accounting for other relevant factors like income, fire risk, and housing age.
+

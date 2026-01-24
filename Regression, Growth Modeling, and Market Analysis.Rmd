@@ -1,0 +1,238 @@
+---
+title: "Regression, Growth Modeling, and Market Analysis"
+author: "Ananya Iyer"
+date: "2025-04-03"
+output: 
+  pdf_document:
+    fig_width: 6
+    fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r echo=FALSE, message=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(boot)
+```
+
+# **Problem 1: Regression Warm Up**
+```{r echo=FALSE, message=FALSE}
+creatinine <- read.csv("creatinine.csv")
+```
+
+## **Part A**
+
+```{r regression, echo=FALSE, message=FALSE}
+model <- lm(creatclear ~ age, data = creatinine)
+
+ggplot(creatinine, aes(x = age, y = creatclear)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Age (years)", y = "Creatinine Clearance Rate (mL/minute)",
+       title = "Relationship between Age and Creatinine Clearance Rate")
+```
+
+From our regression model, we can calculate the expected creatinine clearance rate for a 55-year-old:
+
+```{r echo=FALSE, message=FALSE}
+# Extract coefficients
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+
+# Calculate expected clearance rate for age = 55
+expected_rate_55 <- intercept + slope * 55
+expected_rate_55
+```
+The expected creatinine clearance rate is calculated using the linear regression equation fit to the data:
+Creatinine clearance rate = intercept + (slope × Age)
+
+For a 55-year-old, substitute 55 into the equation.
+
+The regression equation is:
+Creatinine clearance rate = `r round(intercept, 2)` + (`r round(slope, 2)` × Age)
+
+For a 55-year-old, the expected creatinine clearance rate is `r round(expected_rate_55, 2)` mL/minute.
+
+
+## **Part B**
+```{r echo=FALSE, message=FALSE}
+# The slope coefficient represents the change in clearance rate per year of age
+slope
+```
+The creatinine clearance rate changes by `r round(slope, 2)` mL/minute per year of age. This negative value indicates that as age increases by one year, the creatinine clearance rate decreases by approximately `r abs(round(slope, 2))` mL/minute.
+
+## **Part C**
+To determine whose creatinine clearance rate is healthier for their age, I calculated the expected clearance rate for each person and compared their actual rates to these expectations.
+
+```{r echo=FALSE, message=FALSE}
+# Expected rate for a 40-year-old
+expected_40 <- intercept + slope * 40
+# Expected rate for a 60-year-old
+expected_60 <- intercept + slope * 60
+
+# Actual rates
+actual_40 <- 135
+actual_60 <- 112
+
+# Calculate residuals (actual - expected)
+residual_40 <- actual_40 - expected_40
+residual_60 <- actual_60 - expected_60
+
+# Print results
+data.frame(
+  Age = c(40, 60),
+  Actual_Rate = c(actual_40, actual_60),
+  Expected_Rate = c(expected_40, expected_60),
+  Residual = c(residual_40, residual_60)
+)
+```
+
+The residual represents how much higher a person's clearance rate is than expected for their age. The `r ifelse(residual_40 > residual_60, "40", "60")`-year-old has a residual of `r round(max(residual_40, residual_60), 2)` mL/minute, which is higher than the `r ifelse(residual_40 > residual_60, "60", "40")`-year-old's residual of `r round(min(residual_40, residual_60), 2)` mL/minute.
+
+Therefore, the `r ifelse(residual_40 > residual_60, "40", "60")`-year-old has a healthier (higher) creatinine clearance rate for their age.
+
+# **Problem 2: Modeling Disease Growth**
+```{r echo=FALSE, message=FALSE}
+covid <- read.csv("covid.csv")
+```
+
+## **Parts 1 and 2**
+
+```{r fit_models, echo=FALSE, message=FALSE}
+# Split data by country
+italy_data <- subset(covid, country == "Italy")
+spain_data <- subset(covid, country == "Spain")
+
+#Fit exponential growth models for each country and calculate growth rates and doubling times.
+# For Italy
+italy_model <- lm(log(deaths) ~ days_since_first_death, data = italy_data)
+italy_growth_rate <- coef(italy_model)[2]
+italy_doubling_time <- log(2) / italy_growth_rate
+
+# For Spain
+spain_model <- lm(log(deaths) ~ days_since_first_death, data = spain_data)
+spain_growth_rate <- coef(spain_model)[2]
+spain_doubling_time <- log(2) / spain_growth_rate
+
+# Summary
+cat("Italy Growth Rate:", round(italy_growth_rate, 3), "\n")
+cat("Italy Doubling Time:", round(italy_doubling_time, 1), "days\n")
+cat("Spain Growth Rate:", round(spain_growth_rate, 3), "\n")
+cat("Spain Doubling Time:", round(spain_doubling_time, 1), "days\n")
+```
+
+
+```{r bootstrap, echo=FALSE, message=FALSE}
+#bootstrapping to get 95% confidence intervals
+set.seed(123)
+n_boot <- 1000
+
+# Bootstrap function
+bootstrap_exp_growth <- function(data) {
+  n <- nrow(data)
+  indices <- sample(1:n, n, replace = TRUE)
+  boot_data <- data[indices, ]
+  model <- lm(log(deaths) ~ days_since_first_death, data = boot_data)
+  growth_rate <- coef(model)[2]
+  doubling_time <- log(2) / growth_rate
+  return(c(growth_rate, doubling_time))
+}
+
+# Bootstrap for Italy
+italy_boot <- replicate(n_boot, bootstrap_exp_growth(italy_data))
+italy_growth_ci <- quantile(italy_boot[1,], c(0.025, 0.975))
+italy_doubling_ci <- quantile(italy_boot[2,], c(0.025, 0.975))
+
+# Bootstrap for Spain
+spain_boot <- replicate(n_boot, bootstrap_exp_growth(spain_data))
+spain_growth_ci <- quantile(spain_boot[1,], c(0.025, 0.975))
+spain_doubling_ci <- quantile(spain_boot[2,], c(0.025, 0.975))
+
+# Results
+cat("Italy Growth Rate:", round(italy_growth_rate, 3), 
+    "95% CI: [", round(italy_growth_ci[1], 3), ",", round(italy_growth_ci[2], 3), "]\n")
+cat("Italy Doubling Time:", round(italy_doubling_time, 1), "days",
+    "95% CI: [", round(italy_doubling_ci[1], 1), ",", round(italy_doubling_ci[2], 1), "]\n")
+cat("Spain Growth Rate:", round(spain_growth_rate, 3),
+    "95% CI: [", round(spain_growth_ci[1], 3), ",", round(spain_growth_ci[2], 3), "]\n")
+cat("Spain Doubling Time:", round(spain_doubling_time, 1), "days",
+    "95% CI: [", round(spain_doubling_ci[1], 1), ",", round(spain_doubling_ci[2], 1), "]\n")
+```
+
+## **Part 3**
+
+```{r line graph, echo=FALSE, message=FALSE}
+#line graph showing reported daily deaths over time for each country
+ggplot(covid, aes(x = days_since_first_death, y = deaths, color = country)) +
+  geom_line() +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("Italy" = "darkred", "Spain" = "darkblue")) +
+  labs(x = "Days Since First Death", y = "Daily Deaths",
+       title = "COVID-19 Daily Deaths: Italy vs Spain (2020)") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+
+# **Problem 3: Price Elasticity of Demand**
+
+```{r, echo=FALSE, message=FALSE}
+milk <- read.csv("milk.csv")
+```
+
+The power-law model is $Q = KP^{\beta}$, where $P$ is price, $Q$ is quantity, and $\beta$ is the price elasticity of demand.
+
+Taking logarithms of both sides:
+$\log(Q) = \log(K) + \beta \times \log(P)$
+
+Fit this model using linear regression.
+
+```{r elasticity, echo=FALSE, message=FALSE}
+# Fit log-log model
+log_model <- lm(log(sales) ~ log(price), data = milk)
+
+# The coefficient for log(price) is the elasticity
+elasticity <- coef(log_model)[2]
+```
+
+Bootstrap to get a confidence interval for the elasticity.
+
+```{r, echo=FALSE, message=FALSE}
+set.seed(456)
+n_boot <- 1000
+
+# Bootstrap function
+bootstrap_elasticity <- function(data) {
+  n <- nrow(data)
+  indices <- sample(1:n, n, replace = TRUE)
+  boot_data <- data[indices, ]
+  model <- lm(log(sales) ~ log(price), data = boot_data)
+  return(coef(model)[2])
+}
+
+# Bootstrap
+elasticity_boot <- replicate(n_boot, bootstrap_elasticity(milk))
+elasticity_ci <- quantile(elasticity_boot, c(0.025, 0.975))
+
+# Results
+cat("Price Elasticity of Demand:", round(elasticity, 3),
+    "95% CI: [", round(elasticity_ci[1], 2), ",", round(elasticity_ci[2], 2), "]\n")
+```
+
+```{r plot_elasticity, fig.width=8, fig.height=5, echo=FALSE, message=FALSE}
+# Visualize the relationship
+ggplot(milk, aes(x = price, y = sales)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "red") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(x = "Price (log scale)", y = "Quantity Sold (log scale)",
+       title = "Log-Log Relationship Between Milk Price and Sales") +
+  theme_minimal()
+```
+
+The estimated price elasticity of demand for milk is `r round(elasticity, 3)` with a 95% confidence interval of [`r round(elasticity_ci[1], 2)`, `r round(elasticity_ci[2], 2)`]. This value represents the percentage change in quantity demanded in response to a 1% change in price. To estimate this elasticity, I fit a log-log regression model where the logarithm of sales was regressed on the logarithm of price. The coefficient on log(price) gives us the elasticity estimate.
+
