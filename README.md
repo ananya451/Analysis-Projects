@@ -104,32 +104,4 @@ Evaluated pricing theories in the Austin gas market and assessed eBay's paid sea
 
 **Data Visualization:** ggplot2, exploratory data analysis, publication-quality graphics
 
----
 
-## Repository Structure
-```
-├── course-evaluations/
-│   ├── analysis.Rmd
-│   ├── analysis.pdf
-│   └── data/
-├── monte-carlo-simulations/
-│   ├── hypothesis-testing.Rmd
-│   ├── hypothesis-testing.pdf
-│   └── data/
-├── proportion-tests-matching/
-│   ├── matching-analysis.Rmd
-│   ├── matching-analysis.pdf
-│   └── data/
-├── regression-visualization/
-│   ├── regression-analysis.Rmd
-│   ├── regression-analysis.pdf
-│   └── data/
-├── growth-elasticity/
-│   ├── growth-modeling.Rmd
-│   ├── growth-modeling.pdf
-│   └── data/
-└── market-analysis/
-    ├── market-study.Rmd
-    ├── market-study.pdf
-    └── data/
-```
