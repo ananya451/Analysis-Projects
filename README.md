@@ -4,7 +4,7 @@ A collection of statistical analysis and data visualization projects demonstrati
 
 ## Projects
 
-### 1. [Course Evaluations Analysis](./course-evaluations/)
+### 1. Course Evaluations Analysis 
 **Skills:** Data visualization, exploratory data analysis, statistical interpretation
 
 Analyzed factors influencing university course evaluations, examining relationships between instructor characteristics (physical attractiveness, native English speaker status, gender) and student ratings. Investigated patterns in bike-sharing usage, Capital Metro ridership, and Billboard Top 100 chart performance.
@@ -19,7 +19,7 @@ Analyzed factors influencing university course evaluations, examining relationsh
 
 ---
 
-### 2. [Monte Carlo Simulations for Hypothesis Testing](./monte-carlo-simulations/)
+### 2. Monte Carlo Simulations for Hypothesis Testing
 **Skills:** Hypothesis testing, Monte Carlo methods, statistical inference, p-value calculation
 
 Conducted simulation-based hypothesis tests to evaluate claims about SEC trading patterns, health code violations, jury selection bias, and text watermarking detection.
@@ -34,7 +34,7 @@ Conducted simulation-based hypothesis tests to evaluate claims about SEC trading
 
 ---
 
-### 3. [Proportion Tests and Matching Analysis](./proportion-tests-matching/)
+### 3. Proportion Tests and Matching Analysis
 **Skills:** Causal inference, propensity score matching, confidence intervals, experimental design
 
 Analyzed arm-folding preferences across genders and evaluated the causal effect of Get-Out-The-Vote (GOTV) calls on voter turnout using matching techniques to control for confounding variables.
@@ -48,7 +48,7 @@ Analyzed arm-folding preferences across genders and evaluated the causal effect 
 
 ---
 
-### 4. [Regression and Visualization Analysis](./regression-visualization/)
+### 4. Regression and Visualization Analysis 
 **Skills:** Multiple regression, interaction terms, prediction modeling, data-driven recommendations
 
 Built regression models to optimize manufacturing processes, analyze grocery pricing patterns, and investigate redlining evidence in insurance markets.
@@ -62,7 +62,7 @@ Built regression models to optimize manufacturing processes, analyze grocery pri
 
 ---
 
-### 5. [Growth Modeling and Elasticity Analysis](./growth-elasticity/)
+### 5. Growth Modeling and Elasticity Analysis 
 **Skills:** Exponential growth modeling, log-log regression, bootstrap confidence intervals, elasticity estimation
 
 Modeled COVID-19 death growth rates and estimated price elasticity of demand for consumer goods using power-law models.
@@ -76,7 +76,7 @@ Modeled COVID-19 death growth rates and estimated price elasticity of demand for
 
 ---
 
-### 6. [Market Analysis and Causal Inference](./market-analysis/)
+### 6. Market Analysis and Causal Inference 
 **Skills:** Hypothesis testing, confidence intervals, comparative analysis, business recommendations
 
 Evaluated pricing theories in the Austin gas market and assessed eBay's paid search advertising effectiveness using treatment/control comparisons.
